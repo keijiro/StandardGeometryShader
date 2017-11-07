@@ -6,6 +6,7 @@
         _MainTex("Albedo", 2D) = "white" {}
         _Glossiness("Smoothness", Range(0, 1)) = 0.5
         _Metallic("Metallic", Range(0, 1)) = 0.0
+        _LocalTime("Animation Time", Float) = 0.0
     }
     SubShader
     {
@@ -27,6 +28,7 @@
             #pragma vertex Vertex
             #pragma geometry Geometry
             #pragma fragment Fragment
+            #pragma multi_compile_shadowcaster
             #define STDGEO_SHADOW_CASTER
             #include "StandardGeometry.cginc"
             ENDCG
