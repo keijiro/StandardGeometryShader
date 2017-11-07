@@ -9,11 +9,19 @@
 #endif
 
 // Shader properties
+half4 _Color;
 sampler2D _MainTex;
 float4 _MainTex_ST;
+
 half _Glossiness;
 half _Metallic;
-half4 _Color;
+
+sampler2D _BumpMap;
+float _BumpScale;
+
+sampler2D _OcclusionMap;
+float _OcclusionStrength;
+
 float _LocalTime;
 
 // Vertex input attributes
@@ -21,6 +29,7 @@ struct Attributes
 {
     float4 position : POSITION;
     float3 normal : NORMAL;
+    float4 tangent : TANGENT;
     float2 texcoord : TEXCOORD;
 };
 
@@ -40,8 +49,10 @@ struct Varyings
     // GBuffer constructor
     float3 normal : NORMAL;
     float2 texcoord : TEXCOORD0;
-    float3 worldPos : TEXCOORD1;
-    half3 ambient : TEXCOORD2;
+    float4 tspace0 : TEXCOORD1;
+    float4 tspace1 : TEXCOORD2;
+    float4 tspace2 : TEXCOORD3;
+    half3 ambient : TEXCOORD4;
 
 #endif
 };
@@ -54,6 +65,7 @@ Attributes Vertex(Attributes input)
 {
     input.position = mul(unity_ObjectToWorld, input.position);
     input.normal = UnityObjectToWorldNormal(input.normal);
+    input.tangent.xyz = UnityObjectToWorldDir(input.tangent.xyz);
     input.texcoord = TRANSFORM_TEX(input.texcoord, _MainTex);
     return input;
 }
@@ -62,7 +74,7 @@ Attributes Vertex(Attributes input)
 // Geometry stage
 //
 
-Varyings GeoOutWPosNrm(float3 wp, half3 wn, float2 uv)
+Varyings GeoOutWPosNrm(float3 wp, half3 wn, half4 wt, float2 uv)
 {
     Varyings o;
 
@@ -79,14 +91,16 @@ Varyings GeoOutWPosNrm(float3 wp, half3 wn, float2 uv)
 
 #else
     // GBuffer constructor
+    half3 wb = cross(wn, wt) * wt.w * unity_WorldTransformParams.w;
     o.position = UnityWorldToClipPos(float4(wp, 1));
     o.normal = wn;
     o.texcoord = uv;
-    o.worldPos = wp;
+    o.tspace0 = float4(wt.x, wb.x, wn.x, wp.x);
+    o.tspace1 = float4(wt.y, wb.y, wn.y, wp.y);
+    o.tspace2 = float4(wt.z, wb.z, wn.z, wp.z);
     o.ambient = ShadeSHPerVertex(wn, 0);
 
 #endif
-
     return o;
 }
 
@@ -106,10 +120,6 @@ void Geometry(
     float3 p1 = input[1].position.xyz;
     float3 p2 = input[2].position.xyz;
 
-    float3 n0 = input[0].normal;
-    float3 n1 = input[1].normal;
-    float3 n2 = input[2].normal;
-
     float2 uv0 = input[0].texcoord;
     float2 uv1 = input[1].texcoord;
     float2 uv2 = input[2].texcoord;
@@ -127,31 +137,35 @@ void Geometry(
     // Cap triangle
     float3 n = ConstructNormal(p3, p4, p5);
     float np = saturate(ext * 10);
-    outStream.Append(GeoOutWPosNrm(p3, lerp(n0, n, np), uv0));
-    outStream.Append(GeoOutWPosNrm(p4, lerp(n1, n, np), uv1));
-    outStream.Append(GeoOutWPosNrm(p5, lerp(n2, n, np), uv2));
+    float3 n0 = lerp(input[0].normal, n, np);
+    float3 n1 = lerp(input[1].normal, n, np);
+    float3 n2 = lerp(input[2].normal, n, np);
+    outStream.Append(GeoOutWPosNrm(p3, n0, input[0].tangent, uv0));
+    outStream.Append(GeoOutWPosNrm(p4, n1, input[1].tangent, uv1));
+    outStream.Append(GeoOutWPosNrm(p5, n2, input[2].tangent, uv2));
     outStream.RestartStrip();
 
     // Side faces
     n = ConstructNormal(p3, p0, p4);
-    outStream.Append(GeoOutWPosNrm(p3, n, uv0));
-    outStream.Append(GeoOutWPosNrm(p0, n, uv0));
-    outStream.Append(GeoOutWPosNrm(p4, n, uv1));
-    outStream.Append(GeoOutWPosNrm(p1, n, uv1));
+    float4 t = float4(normalize(p3 - p0), 1);
+    outStream.Append(GeoOutWPosNrm(p3, n, t, uv0));
+    outStream.Append(GeoOutWPosNrm(p0, n, t, uv0));
+    outStream.Append(GeoOutWPosNrm(p4, n, t, uv1));
+    outStream.Append(GeoOutWPosNrm(p1, n, t, uv1));
     outStream.RestartStrip();
 
     n = ConstructNormal(p4, p1, p5);
-    outStream.Append(GeoOutWPosNrm(p4, n, uv1));
-    outStream.Append(GeoOutWPosNrm(p1, n, uv1));
-    outStream.Append(GeoOutWPosNrm(p5, n, uv2));
-    outStream.Append(GeoOutWPosNrm(p2, n, uv2));
+    outStream.Append(GeoOutWPosNrm(p4, n, t, uv1));
+    outStream.Append(GeoOutWPosNrm(p1, n, t, uv1));
+    outStream.Append(GeoOutWPosNrm(p5, n, t, uv2));
+    outStream.Append(GeoOutWPosNrm(p2, n, t, uv2));
     outStream.RestartStrip();
 
     n = ConstructNormal(p5, p2, p3);
-    outStream.Append(GeoOutWPosNrm(p5, n, uv2));
-    outStream.Append(GeoOutWPosNrm(p2, n, uv2));
-    outStream.Append(GeoOutWPosNrm(p3, n, uv0));
-    outStream.Append(GeoOutWPosNrm(p0, n, uv0));
+    outStream.Append(GeoOutWPosNrm(p5, n, t, uv2));
+    outStream.Append(GeoOutWPosNrm(p2, n, t, uv2));
+    outStream.Append(GeoOutWPosNrm(p3, n, t, uv0));
+    outStream.Append(GeoOutWPosNrm(p0, n, t, uv0));
     outStream.RestartStrip();
 }
 
@@ -187,6 +201,12 @@ void Fragment(
     // Sample textures
     half3 albedo = tex2D(_MainTex, input.texcoord).rgb * _Color.rgb;
 
+    half4 normal = tex2D(_BumpMap, input.texcoord);
+    normal.xyz = UnpackScaleNormal(normal, _BumpScale);
+
+    half occ = tex2D(_OcclusionMap, input.texcoord).g;
+    occ = LerpOneTo(occ, _OcclusionStrength);
+
     // PBS workflow conversion (metallic -> specular)
     half3 c_diff, c_spec;
     half refl10;
@@ -195,18 +215,26 @@ void Fragment(
         c_spec, refl10     // output
     );
 
+    // Tangent space normal -> world space normal
+    float3 wn = normalize(float3(
+        dot(input.tspace0.xyz, normal),
+        dot(input.tspace1.xyz, normal),
+        dot(input.tspace2.xyz, normal)
+    ));
+
     // Output to GBuffers.
     UnityStandardData data;
     data.diffuseColor = c_diff;
-    data.occlusion = 1;
+    data.occlusion = occ;
     data.specularColor = c_spec;
     data.smoothness = _Glossiness;
-    data.normalWorld = normalize(input.normal);
+    data.normalWorld = wn;
     UnityStandardDataToGbuffer(data, outGBuffer0, outGBuffer1, outGBuffer2);
 
     // Ambient lighting -> emission buffer
-    half3 sh = ShadeSHPerPixel(data.normalWorld, input.ambient, input.worldPos);
-    outEmission = half4(sh * c_diff, 1);
+    float3 wpos = float3(input.tspace0.w, input.tspace1.w, input.tspace2.w);
+    half3 sh = ShadeSHPerPixel(data.normalWorld, input.ambient, wpos);
+    outEmission = half4(sh * c_diff, 1) * occ;
 }
 
 #endif
