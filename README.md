@@ -15,7 +15,8 @@ you have to implement the whole lighting passes by yourself without the help of
 surface shaders.
 
 This example shows the minimum implementation of vertex/geometry/fragment
-shader set that provides the standard lighting features.
+shader set that provides a custom geometry modification along with the standard
+lighting features.
 
 [surface shaders]: https://docs.unity3d.com/Manual/SL-SurfaceShaders.html
 
