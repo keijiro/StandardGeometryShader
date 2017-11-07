@@ -1,4 +1,7 @@
-﻿Shader "Standard Geometry Test"
+// Standard geometry shader example
+// https://github.com/keijiro/StandardGeometryShader
+
+Shader "Standard Geometry Shader Example"
 {
     Properties
     {
@@ -31,6 +34,7 @@
             #pragma vertex Vertex
             #pragma geometry Geometry
             #pragma fragment Fragment
+            #pragma multi_compile_prepassfinal noshadowmask nodynlightmap nodirlightmap nolightmap
             #include "StandardGeometry.cginc"
             ENDCG
         }
@@ -42,11 +46,11 @@
             #pragma vertex Vertex
             #pragma geometry Geometry
             #pragma fragment Fragment
-            #pragma multi_compile_shadowcaster
-            #define STDGEO_SHADOW_CASTER
+            #pragma multi_compile_shadowcaster noshadowmask nodynlightmap nodirlightmap nolightmap
+            #define UNITY_PASS_SHADOWCASTER
             #include "StandardGeometry.cginc"
             ENDCG
         }
     }
-    FallBack "Diffuse"
+    //FallBack "Diffuse"
 }
