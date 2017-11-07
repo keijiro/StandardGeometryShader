@@ -30,6 +30,8 @@ omitted from the shader.
 - No lightmap support
 - No shadowmask support
 - No motion vectors support
+- No GPU instancing support
+- It hasn't been tested with XR.
 
 It's not impossible to add these features to the shader, that might be pretty
 troublesome though.
