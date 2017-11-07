@@ -52,5 +52,4 @@ Shader "Standard Geometry Shader Example"
             ENDCG
         }
     }
-    //FallBack "Diffuse"
 }
