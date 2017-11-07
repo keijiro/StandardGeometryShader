@@ -23,11 +23,12 @@ Limitations
 -----------
 
 To make the example as simple as possible, some features are intensionally
-removed from the shader.
+omitted from the shader.
 
-- No forward lighting support (!)
+- No forward rendering support (!)
 - No lightmap support
 - No shadowmask support
+- No motion vectors support
 
 It's not impossible to add these features to the shader, that might be pretty
 troublesome though.

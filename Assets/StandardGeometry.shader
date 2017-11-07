@@ -26,6 +26,11 @@ Shader "Standard Geometry Shader Example"
     SubShader
     {
         Tags { "RenderType"="Opaque" }
+
+        // This shader only implements the deferred rendering pass (GBuffer
+        // construction) and the shadow caster pass, so that it doesn't
+        // support forward rendering.
+
         Pass
         {
             Tags { "LightMode"="Deferred" }
@@ -38,6 +43,7 @@ Shader "Standard Geometry Shader Example"
             #include "StandardGeometry.cginc"
             ENDCG
         }
+
         Pass
         {
             Tags { "LightMode"="ShadowCaster" }
